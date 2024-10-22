@@ -91,10 +91,24 @@ jobs:
         with:
           targets: ${{ matrix.config.rust_target }}
           toolchain: 1.80.0
+      - name: Install dependencies
+        if: ${{ matrix.config.rust_target == 'aarch64-unknown-linux-gnu' }}
+        run: |
+          sudo apt-get update
+          sudo apt install gcc-aarch64-linux-gnu -y
+
+          cat << EOF > .cargo/config.toml
+          [target.aarch64-unknown-linux-gnu]
+          linker = "aarch64-linux-gnu-gcc"
+          EOF
       - name: Build all crates
-        if: ${{ matrix.config.container == null }}
+        if: ${{ matrix.config.container == null && matrix.config.rust_target != 'aarch64-unknown-linux-gnu' }}
         run: |
           cargo build --release --features ${{ matrix.feature }}
+      - name: Build all crates (Aarch64 Linux)
+        if: ${{ matrix.config.container == null && matrix.config.rust_target == 'aarch64-unknown-linux-gnu' }}
+        run: |
+          cargo build --release --target ${{ matrix.config.rust_target }} --features ${{ matrix.feature }}
 
       - name: Build all crates with glibc 2.17 # for glibc 2.17
         if: ${{ matrix.config.container != null }}
@@ -118,9 +132,14 @@ jobs:
           else
             EXT="dylib"
           fi
-          cp target/release/libavante_templates.$EXT results/avante_templates.$EXT
-          cp target/release/libavante_tokenizers.$EXT results/avante_tokenizers.$EXT
-          cp target/release/libavante_repo_map.$EXT results/avante_repo_map.$EXT
+          if [ "${{ matrix.config.rust_target }}" == "aarch64-unknown-linux-gnu" ]; then
+            DIR="target/release/aarch64-unknown-linux-gnu"
+          else
+            DIR="target/release"
+          fi
+          cp $DIR/libavante_templates.$EXT results/avante_templates.$EXT
+          cp $DIR/libavante_tokenizers.$EXT results/avante_tokenizers.$EXT
+          cp $DIR/libavante_repo_map.$EXT results/avante_repo_map.$EXT
 
           cd results
           tar zcvf avante_lib-${{ matrix.config.os_name }}-${{ matrix.config.arch }}-${{ matrix.feature }}.tar.gz *.${EXT}

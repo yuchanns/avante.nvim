@@ -33,6 +33,7 @@ tokenizers = { version = "0.20.0", features = [
   "onig",
 ], default-features = false }
 serde = { version = "1.0.209", features = ["derive"] }
+openssl = { version = "0.10.35", features = ["vendored"] }
 
 [workspace.lints.rust]
 unsafe_code = "warn"
